@@ -118,7 +118,7 @@ we have used `make_one_shot_iterator()` before, but there are some other iterato
 * reinitializable iterator
 * feedable iterator
 
-initializable iterator
+`initializable iterator`:
 It must be initialized by `sess.run()`.
 ```python
 # copy from somewhere
