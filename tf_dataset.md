@@ -69,3 +69,82 @@ one_element = x_ds_iter.get_next()
 print(sess.run(one_element))
 ```
 
+## Dataset transformation
+` map(), batch(), shuffle() and repeat() `
+map: mapping elements
+batch: pack data in the form of batch. Very useful when training or testing.
+shuffle: randomize the data.
+repeat: repeat the dataset in specified times, such as twice.
+```
+dataset = tf.data.Dataset.from_tensor_slices((np.array([1.0, 2.0, 3.0, 4.0, 5.0]), np.random.uniform(size=(5, 2))))
+dataset2 = dataset.map(lambda x, y: (x, y+1)) # the random array will add 1 elementwise.
+sess.run(dataset.make_one_shot_iterator().get_next())
+sess.run(dataset2.make_one_shot_iterator().get_next())
+dataset3 = dataset2.batch(2)
+sess.run(dataset3.make_one_shot_iterator().get_next())
+```
+
+## A simple toy to use Dataset
+```
+# read image and resize
+def _parse_function(filename, label):
+  image_string = tf.read_file(filename)
+  image_decoded = tf.image.decode_image(image_string)
+  image_resized = tf.image.resize_images(image_decoded, [28, 28])
+  return image_resized, label
+ 
+# get file list
+filenames = tf.constant(['./train/%05d.jpg'%p for p in range(100)])
+labels = tf.constant(np.random.randint(0,2, (100,))  # you can also read from a label file
+ 
+# dataset: each element is (filename, label)
+dataset = tf.data.Dataset.from_tensor_slices((filenames, labels))
+ 
+# image now can be read by map ==> (image_resized, label)
+dataset = dataset.map(_parse_function)
+ 
+# packing into batches ==> (image_resized_batch, label_batch)
+dataset = dataset.shuffle(buffersize=1000).batch(32).repeat(10)
+```
+
+# Tensorflow FixedLengthRecordDataset, TFRecordDataset, TextLineDataset
+1. TextLineDataset: input a list of text file list, and tensorflow will read them line by line.
+2. FixedLengthRecordDataset: read data from file with fixed length.
+3. TFRecordDataset: this is very simple, just read TFRecord files
+
+# Iterator
+we have used `make_one_shot_iterator()` before, but there are some other iterators.
+* initializable iterator
+* reinitializable iterator
+* feedable iterator
+
+initializable iterator
+It must be initialized by `sess.run()`.
+```python
+# copy from somewhere
+limit = tf.placeholder(dtype=tf.int32, shape=[])
+dataset = tf.data.Dataset.from_tensor_slices(tf.range(start=0, limit=limit))
+iterator = dataset.make_initializable_iterator()
+next_element = iterator.get_next()
+with tf.Session() as sess:
+    sess.run(iterator.initializer, feed_dict={limit: 10})
+    for i in range(10):
+      value = sess.run(next_element)
+      assert i == value
+```
+There is an example to use iterator to read very large data from disk, and avoid load them into your computation graph.
+```python
+# Read very large feature file from disk.
+with np.load("/var/data/training_data.npy") as data:
+  features = data["features"]
+  labels = data["labels"]
+ 
+features_placeholder = tf.placeholder(features.dtype, features.shape)
+labels_placeholder = tf.placeholder(labels.dtype, labels.shape)
+ 
+dataset = tf.data.Dataset.from_tensor_slices((features_placeholder, labels_placeholder))
+iterator = dataset.make_initializable_iterator()
+sess.run(iterator.initializer, feed_dict={features_placeholder: features,
+                                          labels_placeholder: labels})
+
+```
