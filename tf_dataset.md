@@ -197,6 +197,6 @@ with tf.Session() as sess:
         _, loss_value = sess.run([train_op, loss])
         print("Iter: {}, Loss: {:.4f}".format(i, loss_value))
 ```
-# Some useful tutorial
+# Some useful tutorials
 * https://www.tensorflow.org/api_docs/python/tf/data/Dataset
 * https://blog.csdn.net/dqcfkyqdxym3f8rb0/article/details/79342369
