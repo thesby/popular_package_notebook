@@ -118,7 +118,7 @@ we have used `make_one_shot_iterator()` before, but there are some other iterato
 * reinitializable iterator
 * feedable iterator
 
-`initializable iterator`:
+### initializable iterator
 It must be initialized by `sess.run()`.
 ```python
 # copy from somewhere
@@ -147,4 +147,53 @@ iterator = dataset.make_initializable_iterator()
 sess.run(iterator.initializer, feed_dict={features_placeholder: features,
                                           labels_placeholder: labels})
 
+```
+
+### reinitializable iterator
+It's to create many datasets with the same pattern, such as training dataset and testing dataset.
+```python
+# Reinitializable iterator to switch between Datasets
+EPOCHS = 10
+# making fake data using numpy
+train_data = (np.random.sample((100,2)), np.random.sample((100,1)))
+test_data = (np.random.sample((10,2)), np.random.sample((10,1)))
+# create two datasets, one for training and one for test
+train_dataset = tf.data.Dataset.from_tensor_slices(train_data)
+test_dataset = tf.data.Dataset.from_tensor_slices(test_data)
+# create a iterator of the correct shape and type
+iter = tf.data.Iterator.from_structure(train_dataset.output_types,
+                                           train_dataset.output_shapes)
+features, labels = iter.get_next()
+# create the initialisation operations
+train_init_op = iter.make_initializer(train_dataset)
+test_init_op = iter.make_initializer(test_dataset)
+with tf.Session() as sess:
+    sess.run(train_init_op) # switch to train dataset
+    for _ in range(EPOCHS):
+        sess.run([features, labels])
+    sess.run(test_init_op) # switch to val dataset.
+    print(sess.run([features, labels]))
+```
+
+# Real example to use dataset in neural network.
+```python
+EPOCHS = 10
+BATCH_SIZE = 16
+# using two numpy arrays
+features, labels = (np.array([np.random.sample((100,2))]), 
+                    np.array([np.random.sample((100,1))]))
+dataset = tf.data.Dataset.from_tensor_slices((features,labels)).repeat().batch(BATCH_SIZE)
+iter = dataset.make_one_shot_iterator()
+x, y = iter.get_next()
+# make a simple model
+net = tf.layers.dense(x, 8, activation=tf.tanh) # pass the first value from iter.get_next() as input
+net = tf.layers.dense(net, 8, activation=tf.tanh)
+prediction = tf.layers.dense(net, 1, activation=tf.tanh)
+loss = tf.losses.mean_squared_error(prediction, y) # pass the second value from iter.get_net() as label
+train_op = tf.train.AdamOptimizer().minimize(loss)
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+    for i in range(EPOCHS):
+        _, loss_value = sess.run([train_op, loss])
+        print("Iter: {}, Loss: {:.4f}".format(i, loss_value))
 ```
